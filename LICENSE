@@ -1,0 +1,61 @@
+MIT License
+
+Copyright (c) 2026 White Cat Feris (https://mez.ink/ferisooo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+DISCLAIMER & AUTHOR'S REQUESTS
+
+The section above is the standard MIT License and is the legally binding part.
+The notes below explain the project's origin and the author's wishes for how it
+should be used.
+
+Origin & credit
+  - The concept, design, and direction for this project belong to White Cat
+    Feris (https://mez.ink/ferisooo). The author did not hand-write the code;
+    it was implemented by the AI assistant "Claude" based on the author's
+    ideas. The author claims ownership of the idea and creative direction, not
+    authorship of every line of code.
+  - Under the MIT License above, the copyright/credit notice must be kept in
+    all copies. Please respect this and do not present this project, or the
+    idea behind it, as your own original creation.
+
+No responsibility for use
+  - This software runs standard Windows maintenance and repair commands (such
+    as DISM, sfc, chkdsk, and similar Microsoft tools) on the user's own
+    machine. It is intended only for legitimate, lawful maintenance of systems
+    you own or are authorized to service.
+  - The software is provided "as is." The author is not responsible or liable
+    for how anyone else uses, modifies, or distributes it, or for any outcome
+    resulting from its use. You use it at your own risk.
+
+The author asks (in good faith) that you do NOT use this project, or copies or
+modifications of it, to:
+  - harass, troll, deceive, or harm others;
+  - scam, defraud, or mislead anyone;
+  - impersonate the author or falsely claim the idea or work as your own;
+  - do anything unlawful or anything that violates the terms of service of the
+    platforms it is hosted or shared on.
+
+Note: the MIT License grants broad permission to use and modify the code, so
+the requests in this last list are the author's stated wishes and conditions of
+respectful use; the legally enforceable terms are the MIT License and the
+copyright-notice requirement above.
