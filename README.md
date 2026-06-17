@@ -1,5 +1,8 @@
 # Kawaii PC Repair (｡♥‿♥｡)
 
+> ## 💖 This was only made possible by Feris.
+> **Here are her socials if you'd like to contact her → [https://mez.ink/ferisooo](https://mez.ink/ferisooo)**
+
 A cute, all-in-one **Windows** repair toolkit by **White Cat Feris**.
 
 No Tauri, no Vite, no build step. **Python is the engine, your browser is the
@@ -54,10 +57,10 @@ Install [Git](https://git-scm.com/downloads), then run:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ferisooo/Tools.git
+git clone https://github.com/ferisooo/advanced-repair.git
 
 # Go into the folder
-cd Tools
+cd advanced-repair
 ```
 
 To update your copy later:
