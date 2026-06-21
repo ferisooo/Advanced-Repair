@@ -132,7 +132,7 @@ The web page exposes these modules:
 |---|--------|--------------|-------|
 | 01 | Full Diagnostics | Reads OS / CPU / RAM / GPU / disk / network health. Fixes nothing. | — (read-only) |
 | 02 | System Info Dump | Dumps specs, disks and drivers to the log. | — (read-only) |
-| 03 | Clean Temp Files | Wipes temp / prefetch junk. | ✗ deleted files are gone |
+| 03 | Clean Temp Files | Moves temp / prefetch junk into a backup folder. | ✅ restores from the backup |
 | 04 | DISM Image Repair | Heals the Windows image (CheckHealth / ScanHealth / RestoreHealth). | ✗ not reversible |
 | 05 | System File Check | `sfc /scannow` — restores protected system files. | ✗ not reversible |
 | 06 | Update Repair | Resets Windows Update and clears its cache. | ✅ restores the `*.old` cache folders |
@@ -152,15 +152,19 @@ Tried a fix and it didn't help? Modules whose change is **reversible** show a
 small **`↩ undo`** button in the corner of their card (hover to reveal it).
 Clicking it runs the *reverse* of that fix:
 
+- **Clean Temp Files** → this one no longer *deletes* anything. It **moves**
+  temp / prefetch junk into `C:\KawaiiRepairBackup` instead, so undo can put it
+  all back. Once you've confirmed nothing broke, **delete that folder yourself**
+  to actually reclaim the disk space.
 - **Update Repair** → puts the renamed `SoftwareDistribution` / `catroot2`
   cache folders back from their `.old` backups.
 - **Schedule Disk Check** → cancels the `chkdsk` queued for next boot.
 - **Schedule RAM Test** → clears the queued memory test.
 - **Blue Screen Doctor** → turns the Realtek USB Audio device back on.
 
-Fixes that change the system **permanently** — deleting temp files, `sfc` /
-`DISM` repairs, the VC++ reinstall, and Component Cleanup (`/ResetBase`) — have
-**no undo button**, because there is genuinely nothing to put back. (The pure
+Fixes that change the system **permanently** — `sfc` / `DISM` repairs, the VC++
+reinstall, the network reset, and Component Cleanup (`/ResetBase`) — have **no
+undo button**, because there is genuinely nothing to put back. (The pure
 read-only modules, Diagnostics and System Info, never change anything.)
 
 ---

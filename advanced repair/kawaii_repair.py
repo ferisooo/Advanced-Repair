@@ -22,10 +22,16 @@ MODULES = {
         'powershell -NoProfile -Command "if(Test-Connection 8.8.8.8 -Count 2 -Quiet){\'Internet: connected (ok)\'}else{\'Internet: NO CONNECTION\'}"',
     ],
     "sysinfo": ["systeminfo", "wmic diskdrive get model,status", "driverquery"],
+    # Instead of deleting outright, MOVE temp junk into a backup folder so the
+    # clean is reversible: hit undo to restore it, or delete the backup folder
+    # to actually reclaim the space once you're happy nothing broke. robocopy
+    # /MOVE skips files that are currently in use (same as the old del /q did).
     "temp": [
-        r"del /s /f /q %temp%\*.*",
-        r"del /s /f /q %windir%\Temp\*.*",
-        r"del /s /f /q %windir%\Prefetch\*.*",
+        'powershell -NoProfile -Command "\'Moving temp files to a backup folder (not deleting). Undo restores them; delete the backup to reclaim space.\'"',
+        r'robocopy "%TEMP%" "%SystemDrive%\KawaiiRepairBackup\usertemp" /MOVE /E /R:0 /W:0 /NFL /NDL /NJH /NP /NJS',
+        r'robocopy "%WINDIR%\Temp" "%SystemDrive%\KawaiiRepairBackup\wintemp" /MOVE /E /R:0 /W:0 /NFL /NDL /NJH /NP /NJS',
+        r'robocopy "%WINDIR%\Prefetch" "%SystemDrive%\KawaiiRepairBackup\prefetch" /MOVE /E /R:0 /W:0 /NFL /NDL /NJH /NP /NJS',
+        r'powershell -NoProfile -Command "$b=\\"$env:SystemDrive\\KawaiiRepairBackup\\"; if(Test-Path $b){$s=(Get-ChildItem $b -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum; \'Backup at \'+$b+\' holds \'+[math]::Round($s/1MB,1)+\' MB. Hit undo to restore, or delete that folder to reclaim the space.\'}else{\'Nothing needed moving - temp was already clean.\'}"',
     ],
     "dism": [
         "DISM /Online /Cleanup-Image /CheckHealth",
@@ -74,6 +80,15 @@ MODULES = {
 # they intentionally have no reverse. The UI only shows an undo button for ids
 # that appear in this dict.
 UNDO = {
+    # Clean Temp Files moved everything into KawaiiRepairBackup instead of
+    # deleting it - move it all back to where it came from. The "if exist"
+    # guards make this a safe no-op when there's no backup to restore.
+    "temp": [
+        r'if exist "%SystemDrive%\KawaiiRepairBackup\usertemp" robocopy "%SystemDrive%\KawaiiRepairBackup\usertemp" "%TEMP%" /MOVE /E /R:0 /W:0 /NFL /NDL /NJH /NP /NJS',
+        r'if exist "%SystemDrive%\KawaiiRepairBackup\wintemp" robocopy "%SystemDrive%\KawaiiRepairBackup\wintemp" "%WINDIR%\Temp" /MOVE /E /R:0 /W:0 /NFL /NDL /NJH /NP /NJS',
+        r'if exist "%SystemDrive%\KawaiiRepairBackup\prefetch" robocopy "%SystemDrive%\KawaiiRepairBackup\prefetch" "%WINDIR%\Prefetch" /MOVE /E /R:0 /W:0 /NFL /NDL /NJH /NP /NJS',
+        r'powershell -NoProfile -Command "$b=\\"$env:SystemDrive\\KawaiiRepairBackup\\"; if((Test-Path $b) -and -not (Get-ChildItem $b -Recurse -File -ErrorAction SilentlyContinue)){Remove-Item $b -Recurse -Force -ErrorAction SilentlyContinue}; \'Temp files restored from backup.\'"',
+    ],
     # Update Repair renamed SoftwareDistribution/catroot2 to *.old. Put them
     # back: stop the services, drop the freshly-made empty folders, and restore
     # the backups. The "if exist *.old" guards mean this is a no-op (and never
@@ -304,7 +319,7 @@ body{min-height:100vh;padding:28px 22px 60px;background:radial-gradient(120% 80%
 var MODULES=[
  {id:"diagnostics",n:"01",title:"Full Diagnostics",blurb:"Reads everything. Fixes nothing. Tells you what's broken.",g:"\uD83D\uDD0D",tag:"scan",time:"~30s"},
  {id:"sysinfo",n:"02",title:"System Info Dump",blurb:"Specs, disks, drivers straight to the log.",g:"\uD83D\uDCCB",tag:"scan",time:"~20s"},
- {id:"temp",n:"03",title:"Clean Temp Files",blurb:"Wipes temp / prefetch junk. Instant room.",g:"\uD83E\uDDF9",tag:"clean",time:"~10s"},
+ {id:"temp",n:"03",title:"Clean Temp Files",blurb:"Moves temp / prefetch junk to a backup (undoable). Delete the backup to reclaim space.",g:"\uD83E\uDDF9",tag:"clean",time:"~15s",undo:1},
  {id:"dism",n:"04",title:"DISM Image Repair",blurb:"Heals the Windows image itself. The slow one.",g:"\uD83E\uDE79",tag:"fix",time:"10-30m"},
  {id:"sfc",n:"05",title:"System File Check",blurb:"Scans + restores protected system files.",g:"\uD83D\uDEE1\uFE0F",tag:"fix",time:"5-15m"},
  {id:"winupdate",n:"06",title:"Update Repair",blurb:"Resets Windows Update + clears its cache.",g:"\uD83D\uDD04",tag:"fix",time:"~1m",undo:1},
