@@ -128,23 +128,40 @@ That's it. If your browser doesn't open on its own, type
 
 The web page exposes these modules:
 
-| # | Module | What it does |
-|---|--------|--------------|
-| 01 | Full Diagnostics | Reads OS / CPU / RAM / GPU / disk / network health. Fixes nothing. |
-| 02 | System Info Dump | Dumps specs, disks and drivers to the log. |
-| 03 | Clean Temp Files | Wipes temp / prefetch junk. |
-| 04 | DISM Image Repair | Heals the Windows image (CheckHealth / ScanHealth / RestoreHealth). |
-| 05 | System File Check | `sfc /scannow` — restores protected system files. |
-| 06 | Update Repair | Resets Windows Update and clears its cache. |
-| 07 | Re-register Apps | Fixes broken Store / Xbox apps. |
-| 08 | Repair VC++ | Re-installs Visual C++ runtimes (common game-crash fix). |
-| 09 | Component Cleanup | Shrinks WinSxS to reclaim disk space. |
-| 10 | Network Reset | Winsock + DNS + IP reset (restart after). |
-| 11 | Schedule Disk Check | Queues `chkdsk` for next boot. |
-| 12 | Schedule RAM Test | Queues the Windows Memory Diagnostic for next boot. |
-| 13 | Blue Screen Doctor | Lists recent bugchecks + crash dumps, then disables the Realtek USB Audio driver (`RtUsbA64.sys`) that bluescreens on boot. Reversible in Device Manager. |
+| # | Module | What it does | Undo? |
+|---|--------|--------------|-------|
+| 01 | Full Diagnostics | Reads OS / CPU / RAM / GPU / disk / network health. Fixes nothing. | — (read-only) |
+| 02 | System Info Dump | Dumps specs, disks and drivers to the log. | — (read-only) |
+| 03 | Clean Temp Files | Wipes temp / prefetch junk. | ✗ deleted files are gone |
+| 04 | DISM Image Repair | Heals the Windows image (CheckHealth / ScanHealth / RestoreHealth). | ✗ not reversible |
+| 05 | System File Check | `sfc /scannow` — restores protected system files. | ✗ not reversible |
+| 06 | Update Repair | Resets Windows Update and clears its cache. | ✅ restores the `*.old` cache folders |
+| 07 | Re-register Apps | Fixes broken Store / Xbox apps. | ✗ not reversible |
+| 08 | Repair VC++ | Re-installs Visual C++ runtimes (common game-crash fix). | ✗ not reversible |
+| 09 | Component Cleanup | Shrinks WinSxS to reclaim disk space. | ✗ permanent (`/ResetBase`) |
+| 10 | Network Reset | Winsock + DNS + IP reset (restart after). | ✗ resets to defaults |
+| 11 | Schedule Disk Check | Queues `chkdsk` for next boot. | ✅ cancels the queued check |
+| 12 | Schedule RAM Test | Queues the Windows Memory Diagnostic for next boot. | ✅ clears the queued test |
+| 13 | Blue Screen Doctor | Lists recent bugchecks + crash dumps, then disables the Realtek USB Audio driver (`RtUsbA64.sys`) that bluescreens on boot. | ✅ re-enables the device |
 
 You can run a single fix, or hit **RUN EVERYTHING** for a full sweep.
+
+### ↩ Undoing a fix
+
+Tried a fix and it didn't help? Modules whose change is **reversible** show a
+small **`↩ undo`** button in the corner of their card (hover to reveal it).
+Clicking it runs the *reverse* of that fix:
+
+- **Update Repair** → puts the renamed `SoftwareDistribution` / `catroot2`
+  cache folders back from their `.old` backups.
+- **Schedule Disk Check** → cancels the `chkdsk` queued for next boot.
+- **Schedule RAM Test** → clears the queued memory test.
+- **Blue Screen Doctor** → turns the Realtek USB Audio device back on.
+
+Fixes that change the system **permanently** — deleting temp files, `sfc` /
+`DISM` repairs, the VC++ reinstall, and Component Cleanup (`/ResetBase`) — have
+**no undo button**, because there is genuinely nothing to put back. (The pure
+read-only modules, Diagnostics and System Info, never change anything.)
 
 ---
 

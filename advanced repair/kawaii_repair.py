@@ -67,14 +67,43 @@ MODULES = {
     ],
 }
 
+# --- reverse / "oops, undo that" steps for the modules that can be undone. ---
+# Only fixes that make a *reversible* change get an entry here. Things like
+# deleting temp files, sfc/DISM repairs, the VC++ reinstall and component
+# cleanup (/ResetBase) change the system permanently and CANNOT be undone, so
+# they intentionally have no reverse. The UI only shows an undo button for ids
+# that appear in this dict.
+UNDO = {
+    # Update Repair renamed SoftwareDistribution/catroot2 to *.old. Put them
+    # back: stop the services, drop the freshly-made empty folders, and restore
+    # the backups. The "if exist *.old" guards mean this is a no-op (and never
+    # deletes the live folder) when there's no backup to restore from.
+    "winupdate": [
+        "net stop wuauserv & net stop bits & net stop cryptsvc & net stop msiserver",
+        r"if exist %windir%\SoftwareDistribution.old rmdir /s /q %windir%\SoftwareDistribution",
+        r"if exist %windir%\SoftwareDistribution.old ren %windir%\SoftwareDistribution.old SoftwareDistribution",
+        r"if exist %windir%\System32\catroot2.old rmdir /s /q %windir%\System32\catroot2",
+        r"if exist %windir%\System32\catroot2.old ren %windir%\System32\catroot2.old catroot2",
+        "net start wuauserv & net start bits & net start cryptsvc & net start msiserver",
+    ],
+    # Cancel the disk check that was queued for next boot.
+    "chkdsk": ["chkntfs /x %SystemDrive%"],
+    # Clear the one-time boot sequence so the RAM test won't run next boot.
+    "memdiag": ["bcdedit /deletevalue {bootmgr} bootsequence"],
+    # Turn the Realtek USB Audio device back on (reverse of Blue Screen Doctor).
+    "bsod": [
+        'powershell -NoProfile -Command "$dev=Get-PnpDevice -FriendlyName \'*Realtek*USB*Audio*\' -ErrorAction SilentlyContinue; if($dev){$dev | %%{ try{Enable-PnpDevice -InstanceId $_.InstanceId -Confirm:$false -ErrorAction Stop; \'Re-enabled: \'+$_.FriendlyName}catch{\'Could not enable \'+$_.FriendlyName+\' :: \'+$_.Exception.Message} }}else{\'No Realtek USB Audio device found - nothing to re-enable\'}"',
+    ],
+}
+
 NO_WINDOW = 0x08000000  # CREATE_NO_WINDOW so no popup consoles
 
 
-def run_module_stream(module, write):
+def run_module_stream(module, write, undo=False):
     """Run each step, streaming every output line through write(line)."""
-    steps = MODULES.get(module)
+    steps = (UNDO if undo else MODULES).get(module)
     if not steps:
-        write("! unknown module")
+        write("! nothing to undo for this fix" if undo else "! unknown module")
         return
     for step in steps:
         write("$ " + step)
@@ -113,6 +142,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if parsed.path == "/run":
             q = urllib.parse.parse_qs(parsed.query)
             module = (q.get("module") or [""])[0]
+            undo = (q.get("undo") or ["0"])[0] == "1"
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
@@ -126,7 +156,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 except Exception:
                     pass
 
-            run_module_stream(module, write)
+            run_module_stream(module, write, undo)
             try:
                 self.wfile.write(b"event: done\ndata: ok\n\n")
                 self.wfile.flush()
@@ -217,8 +247,13 @@ body{min-height:100vh;padding:28px 22px 60px;background:radial-gradient(120% 80%
 .glyph{font-size:26px;filter:drop-shadow(0 0 8px rgba(255,77,151,.4));}
 .ctitle{font-size:16px;font-weight:600;}
 .cblurb{font-size:12px;color:var(--dim);line-height:1.4;flex:1;}
-.cfoot{display:flex;justify-content:space-between;align-items:center;}
+.cfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.cfr{display:flex;align-items:center;gap:8px;}
 .time{font-family:'Space Mono',monospace;font-size:11px;color:var(--pink-soft);}
+.undo{font-family:'Space Mono',monospace;font-size:10px;color:var(--pink-soft);border:1px solid var(--line);border-radius:8px;padding:2px 8px;cursor:pointer;opacity:.5;transition:opacity .2s,color .2s,border-color .2s,background .2s;}
+.card:hover .undo{opacity:1;}
+.undo:hover{color:var(--pink);border-color:var(--pink);background:rgba(255,77,151,.1);}
+.stamp.undone{color:var(--pink-soft);}
 .dots{display:inline-flex;gap:3px;}.dots i{width:5px;height:5px;border-radius:50%;background:var(--yellow);animation:blink 1s infinite;}
 .dots i:nth-child(2){animation-delay:.2s;}.dots i:nth-child(3){animation-delay:.4s;}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
@@ -272,14 +307,14 @@ var MODULES=[
  {id:"temp",n:"03",title:"Clean Temp Files",blurb:"Wipes temp / prefetch junk. Instant room.",g:"\uD83E\uDDF9",tag:"clean",time:"~10s"},
  {id:"dism",n:"04",title:"DISM Image Repair",blurb:"Heals the Windows image itself. The slow one.",g:"\uD83E\uDE79",tag:"fix",time:"10-30m"},
  {id:"sfc",n:"05",title:"System File Check",blurb:"Scans + restores protected system files.",g:"\uD83D\uDEE1\uFE0F",tag:"fix",time:"5-15m"},
- {id:"winupdate",n:"06",title:"Update Repair",blurb:"Resets Windows Update + clears its cache.",g:"\uD83D\uDD04",tag:"fix",time:"~1m"},
+ {id:"winupdate",n:"06",title:"Update Repair",blurb:"Resets Windows Update + clears its cache.",g:"\uD83D\uDD04",tag:"fix",time:"~1m",undo:1},
  {id:"appx",n:"07",title:"Re-register Apps",blurb:"Fixes broken Store / Xbox apps.",g:"\uD83D\uDCE6",tag:"fix",time:"~2m"},
  {id:"vcredist",n:"08",title:"Repair VC++",blurb:"Re-installs VC++ runtimes (game crash fixer).",g:"\u2699\uFE0F",tag:"fix",time:"~2m"},
  {id:"compcleanup",n:"09",title:"Component Cleanup",blurb:"Shrinks WinSxS. Reclaims gigabytes.",g:"\uD83D\uDCBE",tag:"clean",time:"~5m"},
  {id:"network",n:"10",title:"Network Reset",blurb:"Winsock + DNS + IP. Restart after.",g:"\uD83C\uDF10",tag:"fix",time:"~10s",reboot:1},
- {id:"chkdsk",n:"11",title:"Schedule Disk Check",blurb:"Queues chkdsk for next boot.",g:"\uD83D\uDCBF",tag:"reboot",time:"next boot",reboot:1},
- {id:"memdiag",n:"12",title:"Schedule RAM Test",blurb:"Queues the memory test for next boot.",g:"\uD83E\uDDE0",tag:"reboot",time:"next boot",reboot:1},
- {id:"bsod",n:"13",title:"Blue Screen Doctor",blurb:"Shows recent crashes + disables the Realtek USB Audio driver (RtUsbA64.sys) that bluescreens on boot.",g:"\uD83D\uDC8A",tag:"fix",time:"~20s"}
+ {id:"chkdsk",n:"11",title:"Schedule Disk Check",blurb:"Queues chkdsk for next boot.",g:"\uD83D\uDCBF",tag:"reboot",time:"next boot",reboot:1,undo:1},
+ {id:"memdiag",n:"12",title:"Schedule RAM Test",blurb:"Queues the memory test for next boot.",g:"\uD83E\uDDE0",tag:"reboot",time:"next boot",reboot:1,undo:1},
+ {id:"bsod",n:"13",title:"Blue Screen Doctor",blurb:"Shows recent crashes + disables the Realtek USB Audio driver (RtUsbA64.sys) that bluescreens on boot.",g:"\uD83D\uDC8A",tag:"fix",time:"~20s",undo:1}
 ];
 var ORDER=MODULES.map(function(m){return m.id;});
 var status={},running=false,active=null,stopFlag=false;
@@ -287,11 +322,14 @@ var cardsEl=document.getElementById("cards"),tbody=document.getElementById("tbod
 var els={};
 MODULES.forEach(function(m){
  var c=document.createElement("button");c.className="card";c.id="c_"+m.id;
+ var undoBtn=m.undo?'<span class="undo" title="Reverse this fix if it didn\'t help">\u21A9 undo</span>':'';
  c.innerHTML='<span class="scan"></span><span class="ctop"><span class="num">'+m.n+'</span><span class="tag t-'+m.tag+'">'+m.tag+'</span></span>'+
    '<span class="glyph">'+m.g+'</span><span class="ctitle">'+m.title+'</span><span class="cblurb">'+m.blurb+'</span>'+
-   '<span class="cfoot"><span class="time">'+m.time+'</span><span class="state"></span></span>'+(m.reboot?'<span class="reboot" style="opacity:0">\u27F3 reboot</span>':'');
+   '<span class="cfoot"><span class="time">'+m.time+'</span><span class="cfr">'+undoBtn+'<span class="state"></span></span></span>'+(m.reboot?'<span class="reboot" style="opacity:0">\u27F3 reboot</span>':'');
  c.onclick=function(){handleOne(m.id);};
  cardsEl.appendChild(c);els[m.id]={el:c,state:c.querySelector(".state"),rb:c.querySelector(".reboot")};
+ var u=c.querySelector(".undo");
+ if(u)u.onclick=function(ev){ev.stopPropagation();handleOne(m.id,true);};
 });
 function log(line,all){
  var e=tbody.querySelector(".empty");if(e)e.remove();
@@ -300,25 +338,27 @@ function log(line,all){
 }
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function setState(id,s){
- status[id]=s;var o=els[id];o.el.className="card "+(s==="running"?"running ":"")+(active===id?"active":"");
- if(s==="running")o.state.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
+ status[id]=s;var o=els[id];o.el.className="card "+((s==="running"||s==="undoing")?"running ":"")+(active===id?"active":"");
+ if(s==="running"||s==="undoing")o.state.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
  else if(s==="done"){o.state.innerHTML='<span class="stamp">DONE</span>';if(o.rb)o.rb.style.opacity=".8";}
  else if(s==="error")o.state.innerHTML='<span class="stamp err">ERR</span>';
+ else if(s==="reverted"){o.state.innerHTML='<span class="stamp undone">UNDONE</span>';if(o.rb)o.rb.style.opacity="0";}
  else o.state.innerHTML="";
  var dn=ORDER.filter(function(i){return status[i]==="done";}).length;
  document.getElementById("dn").textContent=dn;var pc=Math.round(dn/ORDER.length*100);
  document.getElementById("pct").textContent=pc;document.getElementById("bar").style.width=pc+"%";
 }
-function runOne(id){return new Promise(function(res){
- active=id;setState(id,"running");
- var m=MODULES.filter(function(x){return x.id===id;})[0];log("\u25B6 "+m.title);
- var es=new EventSource("/run?module="+encodeURIComponent(id));var ok=false;
+function runOne(id,undo){return new Promise(function(res){
+ active=id;setState(id,undo?"undoing":"running");
+ var m=MODULES.filter(function(x){return x.id===id;})[0];log((undo?"\u21A9 Reverting ":"\u25B6 ")+m.title);
+ var es=new EventSource("/run?module="+encodeURIComponent(id)+(undo?"&undo=1":""));var ok=false;
  es.onmessage=function(ev){log(ev.data);};
- es.addEventListener("done",function(){ok=true;es.close();setState(id,"done");log("\u2713 complete");res();});
+ es.addEventListener("done",function(){ok=true;es.close();
+   if(undo){setState(id,"reverted");log("\u21A9 reverted");}else{setState(id,"done");log("\u2713 complete");}res();});
  es.onerror=function(){if(!ok){es.close();setState(id,"error");log("\u2717 failed (is the server still running?)");res();}};
 });}
-function handleOne(id){if(running||status[id]==="running")return;running=true;stopFlag=false;core.className="core on";aura.className="aura on";
- runOne(id).then(function(){active=null;running=false;core.className="core";aura.className="aura";});}
+function handleOne(id,undo){if(running||status[id]==="running"||status[id]==="undoing")return;running=true;stopFlag=false;core.className="core on";aura.className="aura on";
+ runOne(id,undo).then(function(){active=null;running=false;core.className="core";aura.className="aura";});}
 document.getElementById("runAll").onclick=function(){
  if(running){stopFlag=true;return;}
  running=true;stopFlag=false;this.classList.add("stop");this.querySelector(".run-txt").innerHTML="&#10022; STOP THE SWEEP";
