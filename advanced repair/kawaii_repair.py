@@ -56,6 +56,15 @@ MODULES = {
     ],
     "chkdsk": ["echo Y| chkdsk %SystemDrive% /f /r"],
     "memdiag": ["bcdedit /bootsequence {memdiag}"],
+    # Blue-screen doctor: shows recent bugchecks + crash dumps, then disables
+    # the Realtek USB Audio device (driver RtUsbA64.sys) that causes the common
+    # "Your PC ran into a problem" crash on boot. Reversible in Device Manager.
+    "bsod": [
+        'powershell -NoProfile -Command "$e=Get-WinEvent -FilterHashtable @{LogName=\'System\';ProviderName=\'Microsoft-Windows-WER-SystemErrorReporting\';Id=1001} -MaxEvents 5 -ErrorAction SilentlyContinue; if($e){\'Recent blue screens (newest first):\'; $e | %%{\' - \'+$_.TimeCreated}}else{\'No blue-screen (bugcheck) events logged - good sign\'}"',
+        'powershell -NoProfile -Command "$d=\\"$env:SystemRoot\\Minidump\\"; if(Test-Path $d){$f=Get-ChildItem $d -Filter *.dmp -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 5; if($f){\'Crash dump files:\'; $f | %%{\' - \'+$_.Name+\'  (\'+$_.LastWriteTime+\')\'}}else{\'Minidump folder is empty\'}}else{\'No minidump folder (no recent crashes saved)\'}"',
+        'powershell -NoProfile -Command "$dev=Get-PnpDevice -FriendlyName \'*Realtek*USB*Audio*\' -ErrorAction SilentlyContinue; if($dev){\'Found Realtek USB Audio (RtUsbA64.sys) device(s):\'; $dev | %%{\' - \'+$_.FriendlyName+\' [\'+$_.Status+\']\'}}else{\'No Realtek USB Audio device found - RtUsbA64.sys is not your culprit\'}"',
+        'powershell -NoProfile -Command "$dev=Get-PnpDevice -FriendlyName \'*Realtek*USB*Audio*\' -Status OK -ErrorAction SilentlyContinue; if($dev){$dev | %%{ try{Disable-PnpDevice -InstanceId $_.InstanceId -Confirm:$false -ErrorAction Stop; \'Disabled: \'+$_.FriendlyName+\' (re-enable anytime in Device Manager)\'}catch{\'Could not disable \'+$_.FriendlyName+\' :: \'+$_.Exception.Message} }}else{\'Nothing to disable (no active Realtek USB Audio device)\'}"',
+    ],
 }
 
 NO_WINDOW = 0x08000000  # CREATE_NO_WINDOW so no popup consoles
@@ -245,7 +254,7 @@ body{min-height:100vh;padding:28px 22px 60px;background:radial-gradient(120% 80%
     <div class="meter">
       <div class="meter-num"><span id="pct">0</span><span>%</span></div>
       <div class="meter-bar"><i id="bar"></i></div>
-      <div class="meter-lbl"><span id="dn">0</span>/12 fixed</div>
+      <div class="meter-lbl"><span id="dn">0</span>/13 fixed</div>
     </div>
   </div>
   <button class="run" id="runAll"><span class="run-glow"></span><span class="run-txt">&#10022; RUN EVERYTHING</span><span class="run-sub">full repair, grab a snack ~</span></button>
@@ -269,7 +278,8 @@ var MODULES=[
  {id:"compcleanup",n:"09",title:"Component Cleanup",blurb:"Shrinks WinSxS. Reclaims gigabytes.",g:"\uD83D\uDCBE",tag:"clean",time:"~5m"},
  {id:"network",n:"10",title:"Network Reset",blurb:"Winsock + DNS + IP. Restart after.",g:"\uD83C\uDF10",tag:"fix",time:"~10s",reboot:1},
  {id:"chkdsk",n:"11",title:"Schedule Disk Check",blurb:"Queues chkdsk for next boot.",g:"\uD83D\uDCBF",tag:"reboot",time:"next boot",reboot:1},
- {id:"memdiag",n:"12",title:"Schedule RAM Test",blurb:"Queues the memory test for next boot.",g:"\uD83E\uDDE0",tag:"reboot",time:"next boot",reboot:1}
+ {id:"memdiag",n:"12",title:"Schedule RAM Test",blurb:"Queues the memory test for next boot.",g:"\uD83E\uDDE0",tag:"reboot",time:"next boot",reboot:1},
+ {id:"bsod",n:"13",title:"Blue Screen Doctor",blurb:"Shows recent crashes + disables the Realtek USB Audio driver (RtUsbA64.sys) that bluescreens on boot.",g:"\uD83D\uDC8A",tag:"fix",time:"~20s"}
 ];
 var ORDER=MODULES.map(function(m){return m.id;});
 var status={},running=false,active=null,stopFlag=false;

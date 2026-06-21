@@ -28,7 +28,7 @@ with one click.
   Windows Update repair, and more).
 - **Watch it work, live.** Every command streams its output to the page line by
   line, so you always see what's happening — nothing is hidden.
-- **"RUN EVERYTHING" button.** One click does a full repair sweep across all 12
+- **"RUN EVERYTHING" button.** One click does a full repair sweep across all 13
   modules. Grab a snack and let it cook.
 - **100% local & offline-by-design.** The little server only listens on
   `127.0.0.1` (your own machine). Nothing is exposed to the internet, and your
@@ -142,6 +142,7 @@ The web page exposes these modules:
 | 10 | Network Reset | Winsock + DNS + IP reset (restart after). |
 | 11 | Schedule Disk Check | Queues `chkdsk` for next boot. |
 | 12 | Schedule RAM Test | Queues the Windows Memory Diagnostic for next boot. |
+| 13 | Blue Screen Doctor | Lists recent bugchecks + crash dumps, then disables the Realtek USB Audio driver (`RtUsbA64.sys`) that bluescreens on boot. Reversible in Device Manager. |
 
 You can run a single fix, or hit **RUN EVERYTHING** for a full sweep.
 
